@@ -1,19 +1,13 @@
 use color_eyre::Result;
-use std::{ffi::OsString, os::windows::ffi::OsStringExt, ptr::null_mut};
+use std::ptr::null_mut;
 
 use winapi::{
     shared::{
-        minwindef::{FALSE, HINSTANCE, LPVOID, TRUE, WPARAM},
-        ntdef::{LANG_NEUTRAL, MAKELANGID, SUBLANG_DEFAULT},
+        minwindef::{FALSE, HINSTANCE, TRUE, WPARAM},
         windef::{HDC, HHOOK, HWINEVENTHOOK, HWND, RECT},
     },
     um::{
         consoleapi::SetConsoleCtrlHandler,
-        errhandlingapi::GetLastError,
-        winbase::{
-            FormatMessageW, LocalFree, FORMAT_MESSAGE_ALLOCATE_BUFFER, FORMAT_MESSAGE_FROM_SYSTEM,
-            FORMAT_MESSAGE_IGNORE_INSERTS,
-        },
         wincon::PHANDLER_ROUTINE,
         wingdi::{GetBValue, GetGValue, GetPixel, GetRValue, CLR_INVALID},
         winuser::{
