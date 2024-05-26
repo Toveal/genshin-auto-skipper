@@ -5,7 +5,10 @@ use crate::{
     global_states::{EventType, EVENT_LISTENER_CHANNEL},
     winapi_bindings::bindings::set_console_ctrl_handler,
 };
-use color_eyre::Result;
+use color_eyre::{
+    eyre::{Context, ContextCompat},
+    Result,
+};
 use std::ptr::null_mut;
 use winapi::{
     shared::{
@@ -39,10 +42,7 @@ impl ChangeForegroundWindow {
         _: DWORD,
         _: DWORD,
     ) {
-        let event_channel = EVENT_LISTENER_CHANNEL.get().unwrap();
-        event_channel
-            .send(EventType::ChangeForegroundWindow)
-            .unwrap();
+        send_event(EventType::ChangeForegroundWindow).unwrap();
     }
 }
 
@@ -73,12 +73,7 @@ impl DestroyWindow {
         _: DWORD,
         _: DWORD,
     ) {
-        EVENT_LISTENER_CHANNEL
-            .get()
-            .unwrap()
-            .clone()
-            .send(EventType::DestroyWindow)
-            .unwrap();
+        send_event(EventType::DestroyWindow).unwrap();
     }
 }
 
@@ -97,12 +92,7 @@ impl ApplicationShutdown {
     }
 
     unsafe extern "system" fn handler(_: u32) -> i32 {
-        EVENT_LISTENER_CHANNEL
-            .get()
-            .unwrap()
-            .clone()
-            .send(EventType::Shutdown)
-            .unwrap();
+        send_event(EventType::Shutdown).unwrap();
         1
     }
 }
@@ -123,16 +113,9 @@ impl KeyboardEvent {
         w_param: WPARAM,
         l_param: LPARAM,
     ) -> LRESULT {
-        // TODO: Maybe log
-        if code == HC_ACTION {
-            if let Some(listener) = EVENT_LISTENER_CHANNEL.get() {
-                let kbd_struct = &*(l_param as *const KBDLLHOOKSTRUCT);
-                if w_param == WM_KEYDOWN as usize {
-                    _ = listener
-                        .clone()
-                        .send(EventType::KeyPress(kbd_struct.vkCode));
-                }
-            }
+        if code == HC_ACTION && w_param == WM_KEYDOWN as usize {
+            let kbd_struct = &*(l_param as *const KBDLLHOOKSTRUCT);
+            send_event(EventType::KeyPress(kbd_struct.vkCode)).unwrap();
         }
 
         CallNextHookEx(null_mut(), code, w_param, l_param)
@@ -143,4 +126,13 @@ impl Drop for KeyboardEvent {
     fn drop(&mut self) {
         let _ = unhook_windows_hook_ex(self.hook);
     }
+}
+
+fn send_event(event: EventType) -> Result<()> {
+    EVENT_LISTENER_CHANNEL
+        .get()
+        .wrap_err("event listener retrieval error")?
+        .clone()
+        .send(event)
+        .wrap_err("event sending error")
 }
