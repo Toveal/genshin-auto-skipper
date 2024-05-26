@@ -5,6 +5,11 @@ mod genshin;
 mod global_states;
 mod winapi_bindings;
 
-fn main() {
-    println!("Hello, world!");
+use app::App;
+use color_eyre::Result;
+
+fn main() -> Result<()> {
+    color_eyre::install()?;
+    App::run()?;
+    Ok(())
 }
