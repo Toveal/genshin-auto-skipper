@@ -18,7 +18,7 @@ use super::{
 use crate::{
     game::{self, GameWindow},
     platform::win32,
-    settings::{ActionMode, Settings},
+    settings::{ActionMode, Settings, SkipMode},
 };
 
 #[derive(Debug)]
@@ -195,14 +195,18 @@ impl Engine {
         let Some(target) = &self.target else {
             return IDLE_POLL / 2;
         };
-        let state = match target.window.capture().and_then(|capture| {
-            detector::detect(&capture, &target.layout, self.settings.color_tolerance)
-        }) {
-            Ok(state) => state,
-            Err(e) => {
-                self.shared.log(LogMsg::CaptureFailed(e.to_string()));
-                return UNFOCUSED_POLL;
-            }
+        let state = match self.settings.skip_mode {
+            // Every tick counts as a dialogue line: just press the key.
+            SkipMode::Press => DialogState::Talking,
+            SkipMode::Detect => match target.window.capture().and_then(|capture| {
+                detector::detect(&capture, &target.layout, self.settings.color_tolerance)
+            }) {
+                Ok(state) => state,
+                Err(e) => {
+                    self.shared.log(LogMsg::CaptureFailed(e.to_string()));
+                    return UNFOCUSED_POLL;
+                }
+            },
         };
 
         match state {
@@ -232,9 +236,11 @@ impl Engine {
                     Err(e) => self.shared.log(LogMsg::InputFailed(e.to_string())),
                 }
 
-                let interval = self.humanizer.interval(&self.settings);
-                self.next_action_at = Instant::now() + interval;
-                interval
+                // Measured from the start of the press, so that the hold time
+                // does not stretch the configured interval.
+                self.next_action_at = now + self.humanizer.interval(&self.settings);
+                self.next_action_at
+                    .saturating_duration_since(Instant::now())
             }
         }
     }

@@ -17,6 +17,9 @@ with the same detection logic and timing, plus a few extras.
   bottom option either with the confirm key or with a mouse click.
 - Human-like timing: random 120–180 ms between presses (sometimes up to
   200 ms) and occasional 3–8 s breaks. All of it is configurable.
+- *Just press the key* mode: presses the interaction key at the same random
+  interval without looking at the screen, for cases where detection does not
+  work (unusual resolution, HDR, mods).
 - Works only while the game window is in focus.
 - Any resolution: 16:9 scales proportionally, ultrawide (21:9, 32:9) and
   2880×1800 use dedicated positions. Windowed mode and non-primary monitors
@@ -54,6 +57,7 @@ The *Open settings folder* button opens it.
 
 | Setting | Default | Notes |
 |---------|---------|-------|
+| Mode | Detect dialogues | Or *Just press the key* — no screen detection |
 | Interaction key | F | Advances dialogue lines |
 | Choosing options | Confirm key (F) | Or a mouse click on the bottom option |
 | Human-like timing | on, 120–180 ms | Off: fixed delay equal to the minimum |

@@ -15,7 +15,7 @@ use crate::{
         hotkeys::{Bindings, HotkeyAction, HotkeyEvent, Hotkeys},
         keys, win32,
     },
-    settings::{ActionMode, Language, Settings},
+    settings::{ActionMode, Language, Settings, SkipMode},
 };
 
 const GOLD: Color32 = Color32::from_rgb(236, 200, 120);
@@ -285,6 +285,20 @@ impl SkipperApp {
 
             let (game_text, game_color) = game_line(t, game);
             ui.label(RichText::new(game_text).color(game_color));
+            if self.settings.skip_mode == SkipMode::Press {
+                let s = &self.settings;
+                let timing = if s.humanize {
+                    format!("{}–{} {}", s.interval_min_ms, s.slow_interval_max_ms, t.ms)
+                } else {
+                    format!("{} {}", s.interval_min_ms, t.ms)
+                };
+                let text = format!(
+                    "{}: {} · {timing}",
+                    t.skip_mode_press,
+                    keys::name(s.interact_key)
+                );
+                ui.label(RichText::new(text).color(BLUE).small());
+            }
             ui.add_space(6.0);
 
             let running = run != RunState::Paused;
@@ -323,7 +337,14 @@ impl SkipperApp {
         let secs = stats.active_time(now).as_secs();
         let time = format!("{}:{:02}:{:02}", secs / 3600, secs / 60 % 60, secs % 60);
         let items = [
-            (stats.lines.to_string(), t.stat_lines),
+            (
+                stats.lines.to_string(),
+                if self.settings.skip_mode == SkipMode::Press {
+                    t.stat_presses
+                } else {
+                    t.stat_lines
+                },
+            ),
             (stats.choices.to_string(), t.stat_choices),
             (time, t.stat_time),
         ];
@@ -369,9 +390,23 @@ impl SkipperApp {
                     .num_columns(2)
                     .spacing([12.0, 6.0])
                     .show(ui, |ui| {
+                        ui.label(t.skip_mode);
+                        ui.vertical(|ui| {
+                            let mode = &mut self.settings.skip_mode;
+                            ui.radio_value(mode, SkipMode::Detect, t.skip_mode_detect)
+                                .on_hover_text(t.skip_mode_detect_hint);
+                            ui.radio_value(mode, SkipMode::Press, t.skip_mode_press)
+                                .on_hover_text(t.skip_mode_press_hint);
+                        });
+                        ui.end_row();
+
                         ui.label(t.interact_key);
                         self.key_button(ui, KeyField::Interact);
                         ui.end_row();
+
+                        if self.settings.skip_mode == SkipMode::Press {
+                            return;
+                        }
 
                         ui.label(t.mode);
                         ui.vertical(|ui| {
@@ -603,7 +638,7 @@ fn hotkey_slot(s: &mut Settings, action: HotkeyAction) -> &mut Option<u16> {
 
 fn game_keys(s: &Settings) -> Vec<u16> {
     let mut keys = vec![s.interact_key];
-    if s.action_mode == ActionMode::Keyboard {
+    if s.skip_mode == SkipMode::Detect && s.action_mode == ActionMode::Keyboard {
         keys.push(s.confirm_key);
     }
     keys

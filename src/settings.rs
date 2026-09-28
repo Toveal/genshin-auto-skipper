@@ -17,6 +17,16 @@ pub enum Language {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+pub enum SkipMode {
+    /// Act only when a dialogue is detected on screen.
+    Detect,
+    /// Press the interaction key at the humanized interval, without
+    /// looking at the screen.
+    Press,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum ActionMode {
     /// Interaction key for lines, confirm key for options.
     Keyboard,
@@ -29,6 +39,7 @@ pub enum ActionMode {
 pub struct Settings {
     pub language: Language,
 
+    pub skip_mode: SkipMode,
     pub action_mode: ActionMode,
     pub interact_key: u16,
     pub confirm_key: u16,
@@ -66,6 +77,7 @@ impl Default for Settings {
             } else {
                 Language::En
             },
+            skip_mode: SkipMode::Detect,
             action_mode: ActionMode::Keyboard,
             interact_key: VK_F,
             confirm_key: VK_F,
@@ -183,6 +195,7 @@ mod tests {
     fn missing_fields_use_defaults() {
         let s: Settings = toml::from_str("action_mode = \"mouse\"").unwrap();
         assert_eq!(s.action_mode, ActionMode::Mouse);
+        assert_eq!(s.skip_mode, SkipMode::Detect);
         assert_eq!(s.interval_min_ms, 120);
         assert_eq!(s.hotkey_exit, Some(VK_F10));
     }

@@ -17,8 +17,7 @@ use windows_sys::Win32::{
         HiDpi::{SetProcessDpiAwarenessContext, DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2},
         Input::KeyboardAndMouse::{
             MapVirtualKeyW, SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, INPUT_MOUSE, KEYBDINPUT,
-            KEYEVENTF_KEYUP, KEYEVENTF_SCANCODE, MAPVK_VK_TO_VSC, MOUSEEVENTF_LEFTDOWN,
-            MOUSEEVENTF_LEFTUP, MOUSEINPUT,
+            KEYEVENTF_KEYUP, MAPVK_VK_TO_VSC, MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, MOUSEINPUT,
         },
         WindowsAndMessaging::{
             FindWindowW, GetClientRect, GetCursorPos, GetForegroundWindow, IsIconic, IsWindow,
@@ -139,18 +138,17 @@ fn send_inputs(inputs: &[INPUT]) -> io::Result<()> {
 }
 
 /// Presses (`down == true`) or releases a key given by virtual-key code.
-/// Scan codes are sent because games often ignore virtual-key-only input.
+/// Both the virtual key and its scan code are filled in, like
+/// `pyautogui.press` does; scan-code-only input is not translated into
+/// `WM_KEYDOWN` on every system.
 pub fn send_key(vk: u16, down: bool) -> io::Result<()> {
     let scan = unsafe { MapVirtualKeyW(vk as u32, MAPVK_VK_TO_VSC) } as u16;
-    let mut flags = KEYEVENTF_SCANCODE;
-    if !down {
-        flags |= KEYEVENTF_KEYUP;
-    }
+    let flags = if down { 0 } else { KEYEVENTF_KEYUP };
     send_inputs(&[INPUT {
         r#type: INPUT_KEYBOARD,
         Anonymous: INPUT_0 {
             ki: KEYBDINPUT {
-                wVk: 0,
+                wVk: vk,
                 wScan: scan,
                 dwFlags: flags,
                 time: 0,
